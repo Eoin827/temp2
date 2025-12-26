@@ -1,5 +1,6 @@
 import sys
 
+import numpy as np
 import torch
 import yaml
 
@@ -42,12 +43,10 @@ with open("./IHCApproxNH/config/config31rfa3-1fullSet.yaml", "r") as ymlfile:
         param.requires_grad = False
 
 
-def forward(inputs):
-    signals, lens = torch.nn.utils.rnn.pad_packed_sequence(inputs, batch_first=True)
-    # sigLen = signals.shape[1]
-
-    signals = signals.permute(0, 2, 1)
-
+def forward(inputs: np.ndarray):
+    # signals, _ = torch.nn.utils.rnn.pad_packed_sequence(inputs, batch_first=True)
+    # signals = signals.permute(0, 2, 1)
+    signals = inputs
     with torch.no_grad():
         IHC_predicted = NET(signals)
 

@@ -3,6 +3,7 @@ import librosa
 import numpy as np
 import torch
 import torch.nn.functional as F
+from ihcogram import forward
 
 MEMORY = joblib.memory.Memory("./joblib_cache", mmap_mode="r", verbose=0)
 NUM_CHANNELS = 1
@@ -14,7 +15,11 @@ def set_pad_index(index: int):
     PAD_INDEX = index
 
 
-# def get_ihcogram_from_raw_audio(raw_audio: np.ndarray, sr: float):
+def get_ihcogram_from_raw_audio(raw_audio: np.ndarray, sr: float):
+    new_sr = 22050
+    y = librosa.resample(raw_audio, orig_sr=sr, target_sr=new_sr)
+
+    return forward(y)
 
 
 def get_spectrogram_from_raw_audio(raw_audio: np.ndarray, sr: float) -> np.ndarray:
@@ -41,7 +46,8 @@ def preprocess_audio(
     raw_audio: np.ndarray, sr: float, dtype=torch.float32
 ) -> torch.Tensor:
     # Get spectrogram (already normalized)
-    x = get_spectrogram_from_raw_audio(raw_audio, sr)
+    # x = get_spectrogram_from_raw_audio(raw_audio, sr)
+    x = get_ihcogram_from_raw_audio(raw_audio, sr)
     # Convert to PyTorch tensor
     x = np.expand_dims(x, 0)
     x = torch.from_numpy(x)  # [1, freq_bins, time_frames]
