@@ -47,7 +47,7 @@ def forward(inputs: np.ndarray):
     # signals, _ = torch.nn.utils.rnn.pad_packed_sequence(inputs, batch_first=True)
     # signals = signals.permute(0, 2, 1)
 
-    signals = torch.from_numpy(inputs)
+    signals = torch.from_numpy(inputs).to(torch.float32)
     with torch.no_grad():
         IHC_predicted = NET(signals)
 
