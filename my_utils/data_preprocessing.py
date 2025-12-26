@@ -3,7 +3,8 @@ import librosa
 import numpy as np
 import torch
 import torch.nn.functional as F
-from ihcogram import forward
+
+from .ihcogram import forward
 
 MEMORY = joblib.memory.Memory("./joblib_cache", mmap_mode="r", verbose=0)
 NUM_CHANNELS = 1
