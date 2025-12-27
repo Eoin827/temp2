@@ -60,4 +60,6 @@ def forward(inputs: np.ndarray):
         IHC_predicted = NET(signals)
 
         IHC_predicted = IHC_predicted * ihcogramMax
-        return utils.invcomp(IHC_predicted, conf["scaleWeight"], conf["scaleType"])
+        return utils.invcomp(IHC_predicted, conf["scaleWeight"], conf["scaleType"]).to(
+            "cpu"
+        )
