@@ -1,11 +1,11 @@
 import math
 
 import torch
-from torch.utils.data import DataLoader
 from lightning.pytorch import LightningDataModule
+from torch.utils.data import DataLoader
 
-from my_utils.ctc_dataset import CTCDataset, load_dataset, SPLITS
-from my_utils.data_preprocessing import preprocess_audio, ar_batch_preparation
+from my_utils.ctc_dataset import FULL_SUBSETS, SPLITS, CTCDataset, load_dataset
+from my_utils.data_preprocessing import ar_batch_preparation, preprocess_audio
 from networks.transformer.encoder import HEIGHT_REDUCTION, WIDTH_REDUCTION
 
 SOS_TOKEN = "<SOS>"  # Start-of-sequence token
@@ -121,7 +121,9 @@ class ARDataset(CTCDataset):
 
     def __getitem__(self, idx):
         x = preprocess_audio(
-            raw_audio=self.ds[idx]["audio"]["array"], sr=self.ds[idx]["audio"]["sampling_rate"], dtype=torch.float32
+            raw_audio=self.ds[idx]["audio"]["array"],
+            sr=self.ds[idx]["audio"]["sampling_rate"],
+            dtype=torch.float32,
         )
         y = self.preprocess_transcript(text=self.ds[idx]["transcript"])
         if self.partition_type == "train":
@@ -135,7 +137,7 @@ class ARDataset(CTCDataset):
         return torch.tensor(y, dtype=torch.int64)
 
     def make_vocabulary(self):
-        full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets")
+        full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
 
         vocab = []
         for split in SPLITS:
@@ -158,4 +160,6 @@ class ARDataset(CTCDataset):
     def get_number_of_frames(self, audio):
         # audio is the output of preprocess_audio
         # audio.shape = [1, freq_bins, time_frames]
-        return math.ceil(audio.shape[1] / HEIGHT_REDUCTION) * math.ceil(audio.shape[2] / WIDTH_REDUCTION)
+        return math.ceil(audio.shape[1] / HEIGHT_REDUCTION) * math.ceil(
+            audio.shape[2] / WIDTH_REDUCTION
+        )

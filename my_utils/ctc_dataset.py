@@ -1,22 +1,25 @@
-import os
 import json
 import math
+import os
 
 import torch
 from datasets import load_dataset
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
 from lightning.pytorch import LightningDataModule
+from torch.utils.data import DataLoader, Dataset
 
-from my_utils.encoding_convertions import krnParser
 from my_utils.data_preprocessing import (
-    preprocess_audio,
     ctc_batch_preparation,
+    preprocess_audio,
     set_pad_index,
 )
+from my_utils.encoding_convertions import krnParser
 
 DATASETS = ["quartets", "beethoven", "mozart", "haydn"]
 SPLITS = ["train", "val", "test"]
+
+# split="train[:10%]+test[:10%:]+"
+SUBSET_AMOUNT = "[:10%]"
+FULL_SUBSETS = [x + f"{SUBSET_AMOUNT}+" for x in SPLITS][:-1]
 
 
 class CTCDataModule(LightningDataModule):
@@ -33,7 +36,9 @@ class CTCDataModule(LightningDataModule):
         self.use_voice_change_token = use_voice_change_token
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.width_reduction = width_reduction  # Must be overrided with that of the model!
+        self.width_reduction = (
+            width_reduction  # Must be overrided with that of the model!
+        )
 
         # Datasets
         # To prevent executing setup() twice
@@ -146,10 +151,15 @@ class CTCDataset(Dataset):
         assert self.ds_name in DATASETS, f"Invalid dataset name: {self.ds_name}"
 
         # Check partition type
-        assert self.partition_type in SPLITS, f"Invalid partition type: {self.partition_type}"
+        assert self.partition_type in SPLITS, (
+            f"Invalid partition type: {self.partition_type}"
+        )
 
         # Get audios and transcripts files
-        self.ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=self.partition_type)
+        self.ds = load_dataset(
+            f"PRAIG/{self.ds_name}-quartets",
+            split=f"{self.partition_type}{SUBSET_AMOUNT}",
+        )
 
         # Check and retrieve vocabulary
         vocab_folder = os.path.join("Quartets", "vocabs")
@@ -178,14 +188,18 @@ class CTCDataset(Dataset):
 
     def __getitem__(self, idx):
         x = preprocess_audio(
-            raw_audio=self.ds[idx]["audio"]["array"], sr=self.ds[idx]["audio"]["sampling_rate"], dtype=torch.float32
+            raw_audio=self.ds[idx]["audio"]["array"],
+            sr=self.ds[idx]["audio"]["sampling_rate"],
+            dtype=torch.float32,
         )
         y = self.preprocess_transcript(text=self.ds[idx]["transcript"])
         if self.partition_type == "train":
             # x.shape = [channels, height, width]
             return (
                 x,
-                (x.shape[2] // self.width_reduction) * self.width_reduction * self.frame_multiplier_factor,
+                (x.shape[2] // self.width_reduction)
+                * self.width_reduction
+                * self.frame_multiplier_factor,
                 y,
                 len(y),
             )
@@ -212,7 +226,7 @@ class CTCDataset(Dataset):
         return w2i, i2w
 
     def make_vocabulary(self):
-        full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets")
+        full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
 
         vocab = []
         for split in SPLITS:
@@ -255,7 +269,7 @@ class CTCDataset(Dataset):
         max_audio_len = 0
         max_frame_multiplier_factor = 0
 
-        full_ds = load_dataset("PRAIG/quartets-quartets")
+        full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
         for split in SPLITS:
             for sample in full_ds[split]:
                 # Max transcript length
