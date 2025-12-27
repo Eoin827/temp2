@@ -229,10 +229,11 @@ class CTCDataset(Dataset):
         full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
 
         vocab = []
-        for split in SPLITS:
-            for text in full_ds[split]["transcript"]:
-                transcript = self.krn_parser.convert(text=text)
-                vocab.extend(transcript)
+        # for split in SPLITS:
+        # for text in full_ds[split]["transcript"]:
+        for text in full_ds["transcript"]:
+            transcript = self.krn_parser.convert(text=text)
+            vocab.extend(transcript)
         vocab = sorted(set(vocab))
 
         w2i = {}
@@ -270,24 +271,25 @@ class CTCDataset(Dataset):
         max_frame_multiplier_factor = 0
 
         full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
-        for split in SPLITS:
-            for sample in full_ds[split]:
-                # Max transcript length
-                transcript = self.krn_parser.convert(text=sample["transcript"])
-                max_seq_len = max(max_seq_len, len(transcript))
+        # for split in SPLITS:
+        #     for sample in full_ds[split]:
+        for sample in full_ds:
+            # Max transcript length
+            transcript = self.krn_parser.convert(text=sample["transcript"])
+            max_seq_len = max(max_seq_len, len(transcript))
 
-                # Max audio length
-                audio = preprocess_audio(
-                    raw_audio=sample["audio"]["array"],
-                    sr=sample["audio"]["sampling_rate"],
-                    dtype=torch.float32,
-                )
-                max_audio_len = max(max_audio_len, audio.shape[2])
-                # Max frame multiplier factor
-                max_frame_multiplier_factor = max(
-                    max_frame_multiplier_factor,
-                    math.ceil(((2 * len(transcript)) + 1) / audio.shape[2]),
-                )
+            # Max audio length
+            audio = preprocess_audio(
+                raw_audio=sample["audio"]["array"],
+                sr=sample["audio"]["sampling_rate"],
+                dtype=torch.float32,
+            )
+            max_audio_len = max(max_audio_len, audio.shape[2])
+            # Max frame multiplier factor
+            max_frame_multiplier_factor = max(
+                max_frame_multiplier_factor,
+                math.ceil(((2 * len(transcript)) + 1) / audio.shape[2]),
+            )
 
         return {
             "max_seq_len": max_seq_len,
