@@ -22,113 +22,6 @@ SUBSET_AMOUNT = "[:10%]"
 FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
 
 
-class CTCDataModule(LightningDataModule):
-    def __init__(
-        self,
-        ds_name: str,
-        use_voice_change_token: bool = False,
-        batch_size: int = 16,
-        num_workers: int = 20,
-        width_reduction: int = 2,
-    ):
-        super(CTCDataModule, self).__init__()
-        self.ds_name = ds_name
-        self.use_voice_change_token = use_voice_change_token
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.width_reduction = (
-            width_reduction  # Must be overrided with that of the model!
-        )
-
-        # Datasets
-        # To prevent executing setup() twice
-        self.train_ds = None
-        self.val_ds = None
-        self.test_ds = None
-
-    def setup(self, stage: str):
-        if stage == "fit":
-            if not self.train_ds:
-                self.train_ds = CTCDataset(
-                    ds_name=self.ds_name,
-                    partition_type="train",
-                    width_reduction=self.width_reduction,
-                    use_voice_change_token=self.use_voice_change_token,
-                )
-            if not self.val_ds:
-                self.val_ds = CTCDataset(
-                    ds_name=self.ds_name,
-                    partition_type="val",
-                    width_reduction=self.width_reduction,
-                    use_voice_change_token=self.use_voice_change_token,
-                )
-
-        if stage == "test" or stage == "predict":
-            if not self.test_ds:
-                self.test_ds = CTCDataset(
-                    ds_name=self.ds_name,
-                    partition_type="test",
-                    width_reduction=self.width_reduction,
-                    use_voice_change_token=self.use_voice_change_token,
-                )
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_ds,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            collate_fn=ctc_batch_preparation,
-        )  # prefetch_factor=2
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_ds,
-            batch_size=1,
-            shuffle=False,
-            num_workers=self.num_workers,
-        )  # prefetch_factor=2
-
-    def test_dataloader(self):
-        return DataLoader(
-            self.test_ds,
-            batch_size=1,
-            shuffle=False,
-            num_workers=self.num_workers,
-        )  # prefetch_factor=2
-
-    def predict_dataloader(self):
-        print("Using test_dataloader for predictions.")
-        return self.test_dataloader()
-
-    def get_w2i_and_i2w(self):
-        try:
-            return self.train_ds.w2i, self.train_ds.i2w
-        except AttributeError:
-            return self.test_ds.w2i, self.test_ds.i2w
-
-    def get_max_seq_len(self):
-        try:
-            return self.train_ds.max_seq_len
-        except AttributeError:
-            return self.test_ds.max_seq_len
-
-    def get_max_audio_len(self):
-        try:
-            return self.train_ds.max_audio_len
-        except AttributeError:
-            return self.test_ds.max_audio_len
-
-    def get_frame_multiplier_factor(self):
-        try:
-            return self.train_ds.frame_multiplier_factor
-        except AttributeError:
-            return self.test_ds.frame_multiplier_factor
-
-
-####################################################################################################
-
-
 class CTCDataset(Dataset):
     def __init__(
         self,
@@ -226,12 +119,15 @@ class CTCDataset(Dataset):
         return w2i, i2w
 
     def make_vocabulary(self):
+        print("Making ctc vocab")
         full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
 
         vocab = []
         # for split in SPLITS:
         # for text in full_ds[split]["transcript"]:
-        for text in full_ds["transcript"]:
+        for i, text in enumerate(full_ds["transcript"]):
+            if i % 50 == 0:
+                print(f"Making vocabulary, item: {i}")
             transcript = self.krn_parser.convert(text=text)
             vocab.extend(transcript)
         vocab = sorted(set(vocab))
@@ -266,6 +162,7 @@ class CTCDataset(Dataset):
         # 3) Get the frame multiplier factor so that
         # the frames input to the RNN are equal to the
         # length of the transcript, ensuring the CTC condition
+        print("Making max lengths")
         max_seq_len = 0
         max_audio_len = 0
         max_frame_multiplier_factor = 0
@@ -273,7 +170,9 @@ class CTCDataset(Dataset):
         full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
         # for split in SPLITS:
         #     for sample in full_ds[split]:
-        for sample in full_ds:
+        for i, sample in enumerate(full_ds):
+            if i % 50 == 0:
+                print(f"Making max lens, item: {i}")
             # Max transcript length
             transcript = self.krn_parser.convert(text=sample["transcript"])
             max_seq_len = max(max_seq_len, len(transcript))

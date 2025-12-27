@@ -7,9 +7,7 @@ from lightning.pytorch import Trainer
 from lightning.pytorch.loggers.wandb import WandbLogger
 
 from my_utils.ar_dataset import ARDataModule
-from my_utils.ctc_dataset import CTCDataModule
 from my_utils.seed import seed_everything
-from networks.crnn.model import CTCTrainedCRNN
 from networks.transformer.model import A2STransformer
 
 seed_everything(42, benchmark=False)
@@ -17,7 +15,7 @@ seed_everything(42, benchmark=False)
 
 def test(
     ds_name,
-    model_type: str = "crnn",
+    model_type: str = "crnn",  # TODO change this
     use_voice_change_token: bool = False,
     checkpoint_path: str = "",
 ):
@@ -43,21 +41,7 @@ def test(
     print(f"\tUse voice change token: {use_voice_change_token}")
     print(f"\tCheckpoint path: {checkpoint_path}")
 
-    if model_type == "crnn":
-        # Data module
-        datamodule = CTCDataModule(
-            ds_name=ds_name,
-            use_voice_change_token=use_voice_change_token,
-        )
-        datamodule.setup(stage="test")
-        ytest_i2w = datamodule.test_ds.i2w
-
-        # Model
-        model = CTCTrainedCRNN.load_from_checkpoint(
-            checkpoint_path, ytest_i2w=ytest_i2w
-        )
-
-    elif model_type == "transformer":
+    if model_type == "transformer":
         # Data module
         datamodule = ARDataModule(
             ds_name=ds_name,

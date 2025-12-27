@@ -7,9 +7,7 @@ from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers.wandb import WandbLogger
 
 from my_utils.ar_dataset import ARDataModule
-from my_utils.ctc_dataset import CTCDataModule
 from my_utils.seed import seed_everything
-from networks.crnn.model import CTCTrainedCRNN
 from networks.transformer.model import A2STransformer
 
 seed_everything(42, benchmark=False)
@@ -39,27 +37,7 @@ def train(
     print(f"\tBatch size: {batch_size}")
     print(f"\tCheck Val Every N epoch: {check_val_every_n_epoch}")
 
-    if model_type == "crnn":
-        # Data module
-        datamodule = CTCDataModule(
-            ds_name=ds_name,
-            use_voice_change_token=use_voice_change_token,
-            batch_size=batch_size,
-        )
-        datamodule.setup(stage="fit")
-        w2i, i2w = datamodule.get_w2i_and_i2w()
-
-        # Model
-        model = CTCTrainedCRNN(
-            w2i=w2i,
-            i2w=i2w,
-            max_audio_len=datamodule.get_max_audio_len(),
-            frame_multiplier_factor=datamodule.get_frame_multiplier_factor(),
-        )
-        # Override the datamodule width reduction factors with that of the model
-        datamodule.width_reduction = model.width_reduction
-
-    elif model_type == "transformer":
+    if model_type == "transformer":
         # Data module
         datamodule = ARDataModule(
             ds_name=ds_name,
@@ -129,10 +107,8 @@ def train(
         precision="16-mixed",  # Mixed precision training
     )
     trainer.fit(model, datamodule=datamodule)
-    if model_type == "crnn":
-        model = CTCTrainedCRNN.load_from_checkpoint(callbacks[0].best_model_path)
-    else:
-        model = A2STransformer.load_from_checkpoint(callbacks[0].best_model_path)
+    # add an if for model type here
+    model = A2STransformer.load_from_checkpoint(callbacks[0].best_model_path)
     model.freeze()
     trainer.test(model, datamodule=datamodule)
 

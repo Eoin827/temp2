@@ -137,12 +137,15 @@ class ARDataset(CTCDataset):
         return torch.tensor(y, dtype=torch.int64)
 
     def make_vocabulary(self):
+        print("Making ar vocabulary")
         full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
 
         vocab = []
         # for split in SPLITS:
         # for text in full_ds[split]["transcript"]:
-        for text in full_ds["transcript"]:
+        for i, text in enumerate(full_ds["transcript"]):
+            if i % 50 == 0:
+                print(f"Making vocabulary, item: {i}")
             transcript = self.krn_parser.convert(text=text)
             vocab.extend(transcript)
         vocab = [SOS_TOKEN, EOS_TOKEN] + vocab
