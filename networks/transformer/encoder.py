@@ -237,3 +237,13 @@ class Encoder(nn.Module):
                 DSCBlock(in_c=128, out_c=256, stride=(1, 1), dropout=dropout),
             ]
         )
+
+    def forward(self, x):
+        for layer in self.conv_blocks:
+            x = layer(x)
+
+        for layer in self.dscblocks:
+            xt = layer(x)
+            x = x + xt if x.size() == xt.size() else xt
+
+        return x
