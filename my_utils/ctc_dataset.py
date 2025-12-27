@@ -19,7 +19,7 @@ SPLITS = ["train", "val", "test"]
 
 # split="train[:10%]+test[:10%:]+"
 SUBSET_AMOUNT = "[:10%]"
-FULL_SUBSETS = [x + f"{SUBSET_AMOUNT}+" for x in SPLITS][:-1]
+FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
 
 
 class CTCDataModule(LightningDataModule):
