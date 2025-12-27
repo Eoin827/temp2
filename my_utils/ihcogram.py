@@ -38,6 +38,8 @@ with open("./IHCApproxNH/config/config31rfa3-1fullSet.yaml", "r") as ymlfile:
         )
     )
 
+    NET.to("cuda:0")
+
     # Freeze the IHC layers
     for param in NET.parameters():
         param.requires_grad = False
