@@ -140,10 +140,11 @@ class ARDataset(CTCDataset):
         full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
 
         vocab = []
-        for split in SPLITS:
-            for text in full_ds[split]["transcript"]:
-                transcript = self.krn_parser.convert(text=text)
-                vocab.extend(transcript)
+        # for split in SPLITS:
+        # for text in full_ds[split]["transcript"]:
+        for text in full_ds["transcript"]:
+            transcript = self.krn_parser.convert(text=text)
+            vocab.extend(transcript)
         vocab = [SOS_TOKEN, EOS_TOKEN] + vocab
         vocab = sorted(set(vocab))
 
