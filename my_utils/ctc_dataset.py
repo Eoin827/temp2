@@ -79,7 +79,7 @@ class CTCDataset(Dataset):
     def __len__(self):
         return len(self.ds)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx):  # TODO im 99% sure thisis overriden and unused
         x = preprocess_audio(
             raw_audio=self.ds[idx]["audio"]["array"],
             sr=self.ds[idx]["audio"]["sampling_rate"],
@@ -118,7 +118,7 @@ class CTCDataset(Dataset):
 
         return w2i, i2w
 
-    def make_vocabulary(self):
+    def make_vocabulary(self):  # TODO im 99% sure thisis overriden and unused
         print("Making ctc vocab")
         full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
 

@@ -60,6 +60,9 @@ def forward(inputs: np.ndarray):
         IHC_predicted = NET(signals)
 
         IHC_predicted = IHC_predicted * ihcogramMax
-        return utils.invcomp(IHC_predicted, conf["scaleWeight"], conf["scaleType"]).to(
+        ret = utils.invcomp(IHC_predicted, conf["scaleWeight"], conf["scaleType"]).to(
             "cpu"
         )
+        ret = torch.squeeze(ret, 0)
+
+        return ret
