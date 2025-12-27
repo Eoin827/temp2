@@ -8,7 +8,6 @@ from lightning.pytorch import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 
 from my_utils.data_preprocessing import (
-    ctc_batch_preparation,
     preprocess_audio,
     set_pad_index,
 )
@@ -178,20 +177,20 @@ class CTCDataset(Dataset):
             max_seq_len = max(max_seq_len, len(transcript))
 
             # Max audio length
-            audio = preprocess_audio(
+            audio = preprocess_audio(  # TODO this doenst have to be done we can just find longest thing without preprocessing then preprocess it later
                 raw_audio=sample["audio"]["array"],
                 sr=sample["audio"]["sampling_rate"],
                 dtype=torch.float32,
             )
             max_audio_len = max(max_audio_len, audio.shape[2])
             # Max frame multiplier factor
-            max_frame_multiplier_factor = max(
-                max_frame_multiplier_factor,
-                math.ceil(((2 * len(transcript)) + 1) / audio.shape[2]),
-            )
+            # max_frame_multiplier_factor = max(
+            #     max_frame_multiplier_factor,
+            #     math.ceil(((2 * len(transcript)) + 1) / audio.shape[2]),
+            # )
 
         return {
             "max_seq_len": max_seq_len,
             "max_audio_len": max_audio_len,
-            "max_frame_multiplier_factor": max_frame_multiplier_factor,
+            "max_frame_multiplier_factor": 0,
         }

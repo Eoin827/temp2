@@ -5,6 +5,8 @@ import torch.nn.functional as F
 
 HEIGHT_REDUCTION = 16
 WIDTH_REDUCTION = 8
+HEIGHT_REDUCTION = 32
+WIDTH_REDUCTION = 512
 
 
 class DepthSepConv2D(nn.Module):
@@ -150,7 +152,9 @@ class DSCBlock(nn.Module):
         self.activation = activation()
         self.conv1 = DepthSepConv2D(in_c, out_c, kernel_size=(3, 3))
         self.conv2 = DepthSepConv2D(out_c, out_c, kernel_size=(3, 3))
-        self.conv3 = DepthSepConv2D(out_c, out_c, kernel_size=(3, 3), padding=(1, 1), stride=stride)
+        self.conv3 = DepthSepConv2D(
+            out_c, out_c, kernel_size=(3, 3), padding=(1, 1), stride=stride
+        )
         self.norm_layer = nn.InstanceNorm2d(
             out_c,
             eps=0.001,
@@ -182,16 +186,47 @@ class DSCBlock(nn.Module):
         return x
 
 
+# class Encoder(nn.Module):
+#     def __init__(self, in_channels, dropout=0.5):
+#         super(Encoder, self).__init__()
+#         self.conv_blocks = nn.ModuleList(
+#             [
+#                 ConvBlock(in_c=in_channels, out_c=16, stride=(1, 1), dropout=dropout),
+#                 ConvBlock(in_c=16, out_c=32, stride=(2, 2), dropout=dropout),
+#                 ConvBlock(in_c=32, out_c=64, stride=(2, 2), dropout=dropout),
+#                 ConvBlock(in_c=64, out_c=128, stride=(2, 2), dropout=dropout),
+#                 ConvBlock(in_c=128, out_c=128, stride=(2, 1), dropout=dropout),
+#             ]
+#         )
+#         self.dscblocks = nn.ModuleList(
+#             [
+#                 DSCBlock(in_c=128, out_c=128, stride=(1, 1), dropout=dropout),
+#                 DSCBlock(in_c=128, out_c=128, stride=(1, 1), dropout=dropout),
+#                 DSCBlock(in_c=128, out_c=128, stride=(1, 1), dropout=dropout),
+#                 DSCBlock(in_c=128, out_c=256, stride=(1, 1), dropout=dropout),
+#             ]
+#         )
+
+#     def forward(self, x):
+#         for layer in self.conv_blocks:
+#             x = layer(x)
+
+#         for layer in self.dscblocks:
+#             xt = layer(x)
+#             x = x + xt if x.size() == xt.size() else xt
+
+
+#         return x
 class Encoder(nn.Module):
     def __init__(self, in_channels, dropout=0.5):
         super(Encoder, self).__init__()
         self.conv_blocks = nn.ModuleList(
             [
-                ConvBlock(in_c=in_channels, out_c=16, stride=(1, 1), dropout=dropout),
-                ConvBlock(in_c=16, out_c=32, stride=(2, 2), dropout=dropout),
-                ConvBlock(in_c=32, out_c=64, stride=(2, 2), dropout=dropout),
-                ConvBlock(in_c=64, out_c=128, stride=(2, 2), dropout=dropout),
-                ConvBlock(in_c=128, out_c=128, stride=(2, 1), dropout=dropout),
+                ConvBlock(in_c=in_channels, out_c=16, stride=(2, 4), dropout=dropout),
+                ConvBlock(in_c=16, out_c=32, stride=(2, 4), dropout=dropout),
+                ConvBlock(in_c=32, out_c=64, stride=(2, 4), dropout=dropout),
+                ConvBlock(in_c=64, out_c=128, stride=(2, 4), dropout=dropout),
+                ConvBlock(in_c=128, out_c=128, stride=(2, 2), dropout=dropout),
             ]
         )
         self.dscblocks = nn.ModuleList(
@@ -202,13 +237,3 @@ class Encoder(nn.Module):
                 DSCBlock(in_c=128, out_c=256, stride=(1, 1), dropout=dropout),
             ]
         )
-
-    def forward(self, x):
-        for layer in self.conv_blocks:
-            x = layer(x)
-
-        for layer in self.dscblocks:
-            xt = layer(x)
-            x = x + xt if x.size() == xt.size() else xt
-
-        return x
