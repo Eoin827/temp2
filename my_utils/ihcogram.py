@@ -50,6 +50,10 @@ def forward(inputs: np.ndarray):
     signals = (
         torch.from_numpy(inputs).to(torch.float32).to("cuda:0")
     )  # TODO idk why people are hardcoding i will do it for now  as well ig
+
+    signals = torch.from_numpy(inputs).to(
+        "cuda:0"
+    )  # TODO idk why people are hardcoding i will do it for now  as well ig
     with torch.no_grad():
         IHC_predicted = NET(signals)
 
