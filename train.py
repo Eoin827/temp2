@@ -44,9 +44,9 @@ def train(
     print(f"\tBatch size: {batch_size}")
     print(f"\tInput feature: {input_feature}")
     print(f"\tEncoder dropout: {encoder_dropout_p}")
-    print(f"\tDecoder dropout: {encoder_dropout_p}")
-    print(f"\tPositional encoding dropout: {decoder_dropout_p}")
-    print(f"\tCheck Val Every N epoch: {position_encoding_dropout_p}")
+    print(f"\tDecoder dropout: {decoder_dropout_p}")
+    print(f"\tPositional encoding dropout: {position_encoding_dropout_p}")
+    print(f"\tCheck Val Every N epoch: {check_val_every_n_epoch}")
 
     if model_type == "transformer":
         # Data module
