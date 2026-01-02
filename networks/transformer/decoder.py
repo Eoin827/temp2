@@ -5,7 +5,7 @@ import torch.nn as nn
 class PositionalEncoding1D(nn.Module):
     def __init__(self, max_len, emb_dim, dropout_p: float = 0.1):
         super(PositionalEncoding1D, self).__init__()
-        print(f"Positional encoding dropout: {dropout_p}")
+        # print(f"Positional encoding dropout: {dropout_p}")
         self.dropout = nn.Dropout(p=dropout_p)
 
         pos = torch.arange(max_len).unsqueeze(1)
@@ -41,7 +41,7 @@ class Decoder(nn.Module):
         attn_window: int = -1,  # -1 means "no limit"
     ):
         super(Decoder, self).__init__()
-        print(f"Decoder dropout: {dropout_p}")
+        # print(f"Decoder dropout: {dropout_p}")
         # Input block
         self.embedding = nn.Embedding(
             num_embeddings=num_embeddings,
