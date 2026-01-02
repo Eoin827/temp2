@@ -37,6 +37,7 @@ def train(
     print(f"\tEpochs: {epochs}")
     print(f"\tPatience: {patience}")
     print(f"\tBatch size: {batch_size}")
+    print(f"\tInput feature: {input_feature}")
     print(f"\tCheck Val Every N epoch: {check_val_every_n_epoch}")
 
     if model_type == "transformer":
