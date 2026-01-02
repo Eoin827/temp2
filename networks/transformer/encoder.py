@@ -92,6 +92,7 @@ class ConvBlock(nn.Module):
         activation=nn.ReLU,
         dropout=0.5,
     ):
+        print(f"Encoder dropout: {dropout}")
         super(ConvBlock, self).__init__()
         self.activation = activation()
         self.conv1 = nn.Conv2d(
@@ -161,6 +162,7 @@ class DSCBlock(nn.Module):
             momentum=0.99,
             track_running_stats=False,
         )
+        print(f"DSCBlock dropout: {dropout}")
         self.dropout = MixDropout(dropout_prob=dropout, dropout_2d_prob=dropout / 2)
 
     def forward(self, x):
