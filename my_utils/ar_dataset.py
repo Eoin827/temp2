@@ -141,6 +141,9 @@ class ARDataset(Dataset):
         self.init(vocab_name="ar_w2i")
         self.max_seq_len += 1  # Add 1 for EOS_TOKEN
 
+    def __len__(self):
+        return len(self.ds)
+
     def init(self, vocab_name: str = "w2i"):
         # Initialize krn parser
         self.krn_parser = krnParser(use_voice_change_token=self.use_voice_change_token)
@@ -179,7 +182,6 @@ class ARDataset(Dataset):
         max_lens = self.check_and_retrieve_max_lens()
         self.max_seq_len = max_lens["max_seq_len"]
         self.max_audio_len = max_lens["max_audio_len"]
-        self.frame_multiplier_factor = max_lens["max_frame_multiplier_factor"]
 
     def __getitem__(self, idx):
         x = preprocess_audio(
@@ -263,13 +265,9 @@ class ARDataset(Dataset):
         # Set the maximum lengths for the whole QUARTETS collection:
         # 1) Get the maximum transcript length
         # 2) Get the maximum audio length
-        # 3) Get the frame multiplier factor so that
-        # the frames input to the RNN are equal to the
-        # length of the transcript, ensuring the CTC condition
         print("Making max lengths")
         max_seq_len = 0
         max_audio_len = 0
-        max_frame_multiplier_factor = 0  # can delete this
 
         full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
         # for split in SPLITS:
@@ -289,14 +287,8 @@ class ARDataset(Dataset):
                 feature=self.feature_type,
             )
             max_audio_len = max(max_audio_len, audio.shape[2])
-            # Max frame multiplier factor
-            # max_frame_multiplier_factor = max(
-            #     max_frame_multiplier_factor,
-            #     math.ceil(((2 * len(transcript)) + 1) / audio.shape[2]),
-            # )
 
         return {
             "max_seq_len": max_seq_len,
             "max_audio_len": max_audio_len,
-            "max_frame_multiplier_factor": 0,
         }
