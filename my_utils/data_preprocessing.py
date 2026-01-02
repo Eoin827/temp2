@@ -1,14 +1,21 @@
+import enum
+import heapq
+from typing import Callable, Literal
+
 import joblib
 import librosa
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-from .ihcogram import forward
+from my_utils.ihcogram import forward
 
 MEMORY = joblib.memory.Memory("./joblib_cache", mmap_mode="r", verbose=0)
 NUM_CHANNELS = 1
 IMG_HEIGHT = NUM_FREQ_BINS = 195
+
+
+FeatureType = Literal["ihcogram", "spectrogram"]
 
 
 def set_pad_index(index: int):
@@ -42,15 +49,21 @@ def get_spectrogram_from_raw_audio(raw_audio: np.ndarray, sr: float) -> np.ndarr
     return log_stft
 
 
+feature_function_map: dict[FeatureType, Callable[[np.ndarray, float], np.ndarray]] = {
+    "ihcogram": get_ihcogram_from_raw_audio,
+    "spectrogram": get_spectrogram_from_raw_audio,
+}
+
+
 @MEMORY.cache
 def preprocess_audio(
-    raw_audio: np.ndarray, sr: float, dtype=torch.float32
+    raw_audio: np.ndarray, sr: float, feature: FeatureType, dtype=torch.float32
 ) -> torch.Tensor:
-    # Get spectrogram (already normalized)
-    x = get_spectrogram_from_raw_audio(raw_audio, sr)
-    print(f"spectogram shape: {x.shape}")
-    x = get_ihcogram_from_raw_audio(raw_audio, sr)
-    print(f"ihcogram shape: {x.shape}")
+    if feature not in feature_function_map:
+        raise ValueError(f"Unknown feature: {feature}")
+
+    x = feature_function_map[feature](raw_audio, sr)
+
     # Convert to PyTorch tensor
     x = np.expand_dims(x, 0)
     x = torch.from_numpy(x)  # [1, freq_bins, time_frames]
@@ -75,17 +88,6 @@ def pad_batch_transcripts(x, dtype=torch.int32):
     )
     x = x.type(dtype=dtype)
     return x
-
-
-def ctc_batch_preparation(batch):
-    x, xl, y, yl = zip(*batch)
-    # Zero-pad audios to maximum batch audio width
-    x = pad_batch_audios(x, dtype=torch.float32)
-    xl = torch.tensor(xl, dtype=torch.int32)
-    # Zero-pad transcripts to maximum batch transcript length
-    y = pad_batch_transcripts(y, dtype=torch.int32)
-    yl = torch.tensor(yl, dtype=torch.int32)
-    return x, xl, y, yl
 
 
 ################################# AR PREPROCESSING:

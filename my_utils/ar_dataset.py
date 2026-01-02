@@ -5,7 +5,11 @@ from lightning.pytorch import LightningDataModule
 from torch.utils.data import DataLoader
 
 from my_utils.ctc_dataset import FULL_SUBSETS, SPLITS, CTCDataset, load_dataset
-from my_utils.data_preprocessing import ar_batch_preparation, preprocess_audio
+from my_utils.data_preprocessing import (
+    FeatureType,
+    ar_batch_preparation,
+    preprocess_audio,
+)
 from networks.transformer.encoder import HEIGHT_REDUCTION, WIDTH_REDUCTION
 
 SOS_TOKEN = "<SOS>"  # Start-of-sequence token
@@ -19,12 +23,14 @@ class ARDataModule(LightningDataModule):
         use_voice_change_token: bool = False,
         batch_size: int = 16,
         num_workers: int = 20,
+        feature_type: FeatureType = "spectrogram",
     ):
         super(ARDataModule, self).__init__()
         self.ds_name = ds_name
         self.use_voice_change_token = use_voice_change_token
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.feature_type = feature_type
 
         # Datasets
         # To prevent executing setup() twice
@@ -39,12 +45,14 @@ class ARDataModule(LightningDataModule):
                     ds_name=self.ds_name,
                     partition_type="train",
                     use_voice_change_token=self.use_voice_change_token,
+                    feature_type=self.feature_type,
                 )
             if not self.val_ds:
                 self.val_ds = ARDataset(
                     ds_name=self.ds_name,
                     partition_type="val",
                     use_voice_change_token=self.use_voice_change_token,
+                    feature_type=self.feature_type,
                 )
 
         if stage == "test" or stage == "predict":
@@ -112,11 +120,13 @@ class ARDataset(CTCDataset):
         ds_name: str,
         partition_type: str,
         use_voice_change_token: bool = False,
+        feature_type: FeatureType = "spectrogram",
     ):
         self.ds_name = ds_name.lower()
         self.partition_type = partition_type
         self.use_voice_change_token = use_voice_change_token
         self.init(vocab_name="ar_w2i")
+        self.feature_type = feature_type
         self.max_seq_len += 1  # Add 1 for EOS_TOKEN
 
     def __getitem__(self, idx):
@@ -124,6 +134,7 @@ class ARDataset(CTCDataset):
             raw_audio=self.ds[idx]["audio"]["array"],
             sr=self.ds[idx]["audio"]["sampling_rate"],
             dtype=torch.float32,
+            feature=self.feature_type,
         )
         y = self.preprocess_transcript(text=self.ds[idx]["transcript"])
         if self.partition_type == "train":

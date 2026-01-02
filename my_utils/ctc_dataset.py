@@ -8,6 +8,7 @@ from lightning.pytorch import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
 
 from my_utils.data_preprocessing import (
+    FeatureType,
     preprocess_audio,
     set_pad_index,
 )
@@ -28,12 +29,14 @@ class CTCDataset(Dataset):
         partition_type: str,
         width_reduction: int = 2,
         use_voice_change_token: bool = False,
+        feature_type: FeatureType = "spectrogram",
     ):
         self.ds_name = ds_name.lower()
         self.partition_type = partition_type
         self.width_reduction = width_reduction
         self.use_voice_change_token = use_voice_change_token
         self.init(vocab_name="ctc_w2i")
+        self.feature_type = feature_type
 
     def init(self, vocab_name: str = "w2i"):
         # Initialize krn parser
@@ -78,25 +81,6 @@ class CTCDataset(Dataset):
     def __len__(self):
         return len(self.ds)
 
-    def __getitem__(self, idx):  # TODO im 99% sure thisis overriden and unused
-        x = preprocess_audio(
-            raw_audio=self.ds[idx]["audio"]["array"],
-            sr=self.ds[idx]["audio"]["sampling_rate"],
-            dtype=torch.float32,
-        )
-        y = self.preprocess_transcript(text=self.ds[idx]["transcript"])
-        if self.partition_type == "train":
-            # x.shape = [channels, height, width]
-            return (
-                x,
-                (x.shape[2] // self.width_reduction)
-                * self.width_reduction
-                * self.frame_multiplier_factor,
-                y,
-                len(y),
-            )
-        return x, y
-
     def preprocess_transcript(self, text: str):
         y = self.krn_parser.convert(text=text)
         y = [self.w2i[w] for w in y]
@@ -114,30 +98,6 @@ class CTCDataset(Dataset):
             w2i, i2w = self.make_vocabulary()
             with open(self.w2i_path, "w") as file:
                 json.dump(w2i, file)
-
-        return w2i, i2w
-
-    def make_vocabulary(self):  # TODO im 99% sure thisis overriden and unused
-        print("Making ctc vocab")
-        full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
-
-        vocab = []
-        # for split in SPLITS:
-        # for text in full_ds[split]["transcript"]:
-        for i, text in enumerate(full_ds["transcript"]):
-            if i % 50 == 0:
-                print(f"Making vocabulary, item: {i}")
-            transcript = self.krn_parser.convert(text=text)
-            vocab.extend(transcript)
-        vocab = sorted(set(vocab))
-
-        w2i = {}
-        i2w = {}
-        for i, w in enumerate(vocab):
-            w2i[w] = i + 1
-            i2w[i + 1] = w
-        w2i["<PAD>"] = 0
-        i2w[0] = "<PAD>"
 
         return w2i, i2w
 
@@ -181,6 +141,7 @@ class CTCDataset(Dataset):
                 raw_audio=sample["audio"]["array"],
                 sr=sample["audio"]["sampling_rate"],
                 dtype=torch.float32,
+                feature=self.feature_type,
             )
             max_audio_len = max(max_audio_len, audio.shape[2])
             # Max frame multiplier factor

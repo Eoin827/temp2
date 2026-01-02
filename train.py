@@ -7,6 +7,7 @@ from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 from lightning.pytorch.loggers.wandb import WandbLogger
 
 from my_utils.ar_dataset import ARDataModule
+from my_utils.data_preprocessing import FeatureType
 from my_utils.seed import seed_everything
 from networks.transformer.model import A2STransformer
 
@@ -22,6 +23,7 @@ def train(
     patience: int = 20,
     batch_size: int = 16,
     check_val_every_n_epoch: int = 5,
+    input_feature: FeatureType = "spectrogram",
 ):
     gc.collect()
     torch.cuda.empty_cache()
@@ -43,6 +45,7 @@ def train(
             ds_name=ds_name,
             use_voice_change_token=use_voice_change_token,
             batch_size=batch_size,
+            feature_type=input_feature,
         )
         datamodule.setup(stage="fit")
         w2i, i2w = datamodule.get_w2i_and_i2w()
