@@ -1,6 +1,7 @@
 import json
 import math
 import os
+from typing import Optional
 
 import torch
 from datasets import load_dataset
@@ -38,9 +39,9 @@ class ARDataModule(LightningDataModule):
 
         # Datasets
         # To prevent executing setup() twice
-        self.train_ds = None
-        self.val_ds = None
-        self.test_ds = None
+        self.train_ds: Optional[ARDataset] = None
+        self.val_ds: Optional[ARDataset] = None
+        self.test_ds: Optional[ARDataset] = None
 
     def setup(self, stage: str):
         if stage == "fit":

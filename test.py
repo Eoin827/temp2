@@ -7,6 +7,7 @@ from lightning.pytorch import Trainer
 from lightning.pytorch.loggers.wandb import WandbLogger
 
 from my_utils.ar_dataset import ARDataModule
+from my_utils.data_preprocessing import FeatureType
 from my_utils.seed import seed_everything
 from networks.transformer.model import A2STransformer
 
@@ -18,6 +19,7 @@ def test(
     model_type: str = "crnn",  # TODO change this
     use_voice_change_token: bool = False,
     checkpoint_path: str = "",
+    input_feature: FeatureType = "spectrogram",
 ):
     gc.collect()
     torch.cuda.empty_cache()
@@ -46,6 +48,7 @@ def test(
         datamodule = ARDataModule(
             ds_name=ds_name,
             use_voice_change_token=use_voice_change_token,
+            feature_type=input_feature,
         )
         datamodule.setup(stage="test")
         ytest_i2w = datamodule.test_ds.i2w
