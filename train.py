@@ -24,6 +24,9 @@ def train(
     batch_size: int = 16,
     check_val_every_n_epoch: int = 5,
     input_feature: FeatureType = "spectrogram",
+    encoder_dropout_p: float = 0.5,
+    decoder_dropout_p: float = 0.1,
+    position_encoding_dropout_p: float = 0.1,
 ):
     gc.collect()
     torch.cuda.empty_cache()
@@ -40,6 +43,9 @@ def train(
     print(f"\tPatience: {patience}")
     print(f"\tBatch size: {batch_size}")
     print(f"\tInput feature: {input_feature}")
+    print(f"\tEncoder dropout: {encoder_dropout_p}")
+    print(f"\tDecoder dropout: {encoder_dropout_p}")
+    print(f"\tPositional encoding dropout: {encoder_dropout_p}")
     print(f"\tCheck Val Every N epoch: {check_val_every_n_epoch}")
 
     if model_type == "transformer":
@@ -61,6 +67,9 @@ def train(
             i2w=i2w,
             attn_window=attn_window,
             teacher_forcing_prob=0.2,
+            encoder_dropout_p=encoder_dropout_p,
+            decoder_dropout_p=decoder_dropout_p,
+            positional_encoding_dropout_p=position_encoding_dropout_p,
         )
 
     else:

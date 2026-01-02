@@ -3,15 +3,15 @@ import random
 
 import torch
 import torch.nn as nn
+from lightning.pytorch import LightningModule
 from torch.nn import CrossEntropyLoss
 from torchinfo import summary
-from lightning.pytorch import LightningModule
 
-from networks.transformer.decoder import Decoder
-from networks.transformer.encoder import Encoder, HEIGHT_REDUCTION, WIDTH_REDUCTION
-from my_utils.metrics import compute_metrics
+from my_utils.ar_dataset import EOS_TOKEN, SOS_TOKEN
 from my_utils.data_preprocessing import IMG_HEIGHT, NUM_CHANNELS
-from my_utils.ar_dataset import SOS_TOKEN, EOS_TOKEN
+from my_utils.metrics import compute_metrics
+from networks.transformer.decoder import Decoder
+from networks.transformer.encoder import HEIGHT_REDUCTION, WIDTH_REDUCTION, Encoder
 
 
 class PositionalEncoding2D(nn.Module):
@@ -24,10 +24,18 @@ class PositionalEncoding2D(nn.Module):
         den = torch.pow(10000, torch.arange(0, num_channels // 2, 2) / num_channels)
 
         pe = torch.zeros(1, max_height, max_width, num_channels)
-        pe[0, :, :, 0 : num_channels // 2 : 2] = torch.sin(pos_w / den).unsqueeze(0).repeat(max_height, 1, 1)
-        pe[0, :, :, 1 : num_channels // 2 : 2] = torch.cos(pos_w / den).unsqueeze(0).repeat(max_height, 1, 1)
-        pe[0, :, :, num_channels // 2 :: 2] = torch.sin(pos_h / den).unsqueeze(1).repeat(1, max_width, 1)
-        pe[0, :, :, (num_channels // 2) + 1 :: 2] = torch.cos(pos_h / den).unsqueeze(1).repeat(1, max_width, 1)
+        pe[0, :, :, 0 : num_channels // 2 : 2] = (
+            torch.sin(pos_w / den).unsqueeze(0).repeat(max_height, 1, 1)
+        )
+        pe[0, :, :, 1 : num_channels // 2 : 2] = (
+            torch.cos(pos_w / den).unsqueeze(0).repeat(max_height, 1, 1)
+        )
+        pe[0, :, :, num_channels // 2 :: 2] = (
+            torch.sin(pos_h / den).unsqueeze(1).repeat(1, max_width, 1)
+        )
+        pe[0, :, :, (num_channels // 2) + 1 :: 2] = (
+            torch.cos(pos_h / den).unsqueeze(1).repeat(1, max_width, 1)
+        )
         pe = pe.permute(0, 3, 1, 2).contiguous()
         self.register_buffer("pe", pe)
 
@@ -47,6 +55,9 @@ class A2STransformer(LightningModule):
         ytest_i2w=None,
         attn_window=-1,
         teacher_forcing_prob=0.5,
+        encoder_dropout_p: float = 0.5,
+        decoder_dropout_p: float = 0.1,
+        positional_encoding_dropout_p: float = 0.1,
     ):
         super(A2STransformer, self).__init__()
         # Save hyperparameters
@@ -60,11 +71,12 @@ class A2STransformer(LightningModule):
         self.max_audio_len = max_audio_len
         self.max_seq_len = max_seq_len
         self.teacher_forcing_prob = teacher_forcing_prob
-        self.encoder = Encoder(in_channels=NUM_CHANNELS)
+        self.encoder = Encoder(in_channels=NUM_CHANNELS, dropout=encoder_dropout_p)
         self.pos_2d = PositionalEncoding2D(
             num_channels=256,
             max_height=math.ceil(IMG_HEIGHT / HEIGHT_REDUCTION),
             max_width=math.ceil(self.max_audio_len / WIDTH_REDUCTION),
+            dropout_p=positional_encoding_dropout_p,
         )
         self.decoder = Decoder(
             output_size=len(self.w2i),
@@ -72,6 +84,7 @@ class A2STransformer(LightningModule):
             num_embeddings=len(self.w2i),
             padding_idx=self.padding_idx,
             attn_window=attn_window,
+            dropout_p=decoder_dropout_p,
         )
         self.summary()
         # Loss
@@ -82,12 +95,15 @@ class A2STransformer(LightningModule):
 
     def summary(self):
         print("Encoder")
-        summary(self.encoder, input_size=[1, NUM_CHANNELS, IMG_HEIGHT, self.max_audio_len])
+        summary(
+            self.encoder, input_size=[1, NUM_CHANNELS, IMG_HEIGHT, self.max_audio_len]
+        )
         print("Decoder")
         tgt_size = [1, self.max_seq_len]
         memory_size = [
             1,
-            math.ceil(IMG_HEIGHT / HEIGHT_REDUCTION) * math.ceil(self.max_audio_len / WIDTH_REDUCTION),
+            math.ceil(IMG_HEIGHT / HEIGHT_REDUCTION)
+            * math.ceil(self.max_audio_len / WIDTH_REDUCTION),
             256,
         ]
         memory_len_size = [1]
@@ -119,13 +135,17 @@ class A2STransformer(LightningModule):
         # y.shape = [batch_size, seq_len]
         y_errored = y.clone()
         # Create a random mask with the same shape as y_errored
-        random_mask = torch.rand_like(y_errored, dtype=torch.float) < self.teacher_forcing_prob
+        random_mask = (
+            torch.rand_like(y_errored, dtype=torch.float) < self.teacher_forcing_prob
+        )
         # Create a mask for non-padding tokens
         non_padding_mask = y != self.padding_idx
         # Combine the random mask and non-padding mask
         combined_mask = random_mask & non_padding_mask
         # Generate random indices for the entire matrix
-        random_indices = torch.randint(0, len(self.w2i), y_errored.shape, device=y_errored.device)
+        random_indices = torch.randint(
+            0, len(self.w2i), y_errored.shape, device=y_errored.device
+        )
         # Apply the random indices only where the combined mask is True
         y_errored = torch.where(combined_mask, random_indices, y_errored)
         return y_errored
@@ -161,7 +181,9 @@ class A2STransformer(LightningModule):
             if y_out_hat_word == EOS_TOKEN:
                 break
 
-            y_in = torch.cat([y_in, torch.tensor([[y_out_hat_token]]).long().to(x.device)], dim=1)
+            y_in = torch.cat(
+                [y_in, torch.tensor([[y_out_hat_token]]).long().to(x.device)], dim=1
+            )
 
         # Decoded ground truth
         y = [self.ytest_i2w[i.item()] for i in y[0][1:]]  # Remove SOS_TOKEN
