@@ -28,6 +28,8 @@ def train(
     gc.collect()
     torch.cuda.empty_cache()
 
+    # TODO maybe add validation or somethig for those inputs who cares tho
+
     # Experiment info
     print("TRAIN EXPERIMENT")
     print(f"\tDataset: {ds_name}")

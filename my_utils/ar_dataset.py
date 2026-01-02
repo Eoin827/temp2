@@ -1,15 +1,19 @@
+import json
 import math
+import os
 
 import torch
+from datasets import load_dataset
 from lightning.pytorch import LightningDataModule
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
-from my_utils.ctc_dataset import FULL_SUBSETS, SPLITS, CTCDataset, load_dataset
 from my_utils.data_preprocessing import (
     FeatureType,
     ar_batch_preparation,
     preprocess_audio,
+    set_pad_index,
 )
+from my_utils.encoding_convertions import krnParser
 from networks.transformer.encoder import HEIGHT_REDUCTION, WIDTH_REDUCTION
 
 SOS_TOKEN = "<SOS>"  # Start-of-sequence token
@@ -113,8 +117,15 @@ class ARDataModule(LightningDataModule):
 
 ####################################################################################################
 
+DATASETS = ["quartets", "beethoven", "mozart", "haydn"]
+SPLITS = ["train", "val", "test"]
 
-class ARDataset(CTCDataset):
+# split="train[:10%]+test[:10%:]+"
+SUBSET_AMOUNT = "[:1%]"
+FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
+
+
+class ARDataset(Dataset):
     def __init__(
         self,
         ds_name: str,
@@ -125,9 +136,49 @@ class ARDataset(CTCDataset):
         self.ds_name = ds_name.lower()
         self.partition_type = partition_type
         self.use_voice_change_token = use_voice_change_token
-        self.init(vocab_name="ar_w2i")
         self.feature_type = feature_type
+        self.init(vocab_name="ar_w2i")
         self.max_seq_len += 1  # Add 1 for EOS_TOKEN
+
+    def init(self, vocab_name: str = "w2i"):
+        # Initialize krn parser
+        self.krn_parser = krnParser(use_voice_change_token=self.use_voice_change_token)
+
+        # Check dataset name
+        assert self.ds_name in DATASETS, f"Invalid dataset name: {self.ds_name}"
+
+        # Check partition type
+        assert self.partition_type in SPLITS, (
+            f"Invalid partition type: {self.partition_type}"
+        )
+
+        # Get audios and transcripts files
+        self.ds = load_dataset(
+            f"PRAIG/{self.ds_name}-quartets",
+            split=f"{self.partition_type}{SUBSET_AMOUNT}",
+        )
+
+        # Check and retrieve vocabulary
+        vocab_folder = os.path.join("Quartets", "vocabs")
+        os.makedirs(vocab_folder, exist_ok=True)
+        vocab_name = self.ds_name + f"_{vocab_name}"
+        vocab_name += "_withvc" if self.use_voice_change_token else ""
+        vocab_name += ".json"
+        self.w2i_path = os.path.join(vocab_folder, vocab_name)
+        self.w2i, self.i2w = self.check_and_retrieve_vocabulary()
+        # Modify the global PAD_INDEX to match w2i["<PAD>"]
+        set_pad_index(self.w2i["<PAD>"])
+
+        # Check and retrive max lengths
+        # Set max_seq_len, max_audio_len and frame_multiplier_factor
+        max_lens_folder = os.path.join("Quartets", "max_lens")
+        os.makedirs(max_lens_folder, exist_ok=True)
+        max_lens_name = vocab_name
+        self.max_lens_path = os.path.join(max_lens_folder, max_lens_name)
+        max_lens = self.check_and_retrieve_max_lens()
+        self.max_seq_len = max_lens["max_seq_len"]
+        self.max_audio_len = max_lens["max_audio_len"]
+        self.frame_multiplier_factor = max_lens["max_frame_multiplier_factor"]
 
     def __getitem__(self, idx):
         x = preprocess_audio(
@@ -178,3 +229,73 @@ class ARDataset(CTCDataset):
         return math.ceil(audio.shape[1] / HEIGHT_REDUCTION) * math.ceil(
             audio.shape[2] / WIDTH_REDUCTION
         )
+
+    def check_and_retrieve_vocabulary(self):
+        w2i = {}
+        i2w = {}
+
+        if os.path.isfile(self.w2i_path):
+            with open(self.w2i_path, "r") as file:
+                w2i = json.load(file)
+            i2w = {v: k for k, v in w2i.items()}
+        else:
+            w2i, i2w = self.make_vocabulary()
+            with open(self.w2i_path, "w") as file:
+                json.dump(w2i, file)
+
+        return w2i, i2w
+
+    def check_and_retrieve_max_lens(self):
+        max_lens = {}
+
+        if os.path.isfile(self.max_lens_path):
+            with open(self.max_lens_path, "r") as file:
+                max_lens = json.load(file)
+        else:
+            max_lens = self.make_max_lens()
+            with open(self.max_lens_path, "w") as file:
+                json.dump(max_lens, file)
+
+        return max_lens
+
+    def make_max_lens(self):
+        # Set the maximum lengths for the whole QUARTETS collection:
+        # 1) Get the maximum transcript length
+        # 2) Get the maximum audio length
+        # 3) Get the frame multiplier factor so that
+        # the frames input to the RNN are equal to the
+        # length of the transcript, ensuring the CTC condition
+        print("Making max lengths")
+        max_seq_len = 0
+        max_audio_len = 0
+        max_frame_multiplier_factor = 0  # can delete this
+
+        full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
+        # for split in SPLITS:
+        #     for sample in full_ds[split]:
+        for i, sample in enumerate(full_ds):
+            if i % 50 == 0:
+                print(f"Making max lens, item: {i}")
+            # Max transcript length
+            transcript = self.krn_parser.convert(text=sample["transcript"])
+            max_seq_len = max(max_seq_len, len(transcript))
+
+            # Max audio length
+            audio = preprocess_audio(  # TODO this doenst have to be done we can just find longest thing without preprocessing then preprocess it later
+                raw_audio=sample["audio"]["array"],
+                sr=sample["audio"]["sampling_rate"],
+                dtype=torch.float32,
+                feature=self.feature_type,
+            )
+            max_audio_len = max(max_audio_len, audio.shape[2])
+            # Max frame multiplier factor
+            # max_frame_multiplier_factor = max(
+            #     max_frame_multiplier_factor,
+            #     math.ceil(((2 * len(transcript)) + 1) / audio.shape[2]),
+            # )
+
+        return {
+            "max_seq_len": max_seq_len,
+            "max_audio_len": max_audio_len,
+            "max_frame_multiplier_factor": 0,
+        }
