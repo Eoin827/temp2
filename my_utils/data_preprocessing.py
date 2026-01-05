@@ -10,7 +10,8 @@ import torch.nn.functional as F
 
 from my_utils.ihcogram import forward
 
-MEMORY = joblib.memory.Memory("./joblib_cache", mmap_mode="r", verbose=0)
+#MEMORY = joblib.memory.Memory("./joblib_cache", mmap_mode="r", verbose=0)
+MEMORY = joblib.memory.Memory("/scratch/22454862/joblib_cache", mmap_mode="r", verbose=0)
 NUM_CHANNELS = 1
 IMG_HEIGHT = NUM_FREQ_BINS = 195
 

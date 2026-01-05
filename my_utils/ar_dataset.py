@@ -34,7 +34,8 @@ class ARDataModule(LightningDataModule):
         self.ds_name = ds_name
         self.use_voice_change_token = use_voice_change_token
         self.batch_size = batch_size
-        self.num_workers = num_workers
+        #self.num_workers = num_workers
+        self.num_workers =  0 # TODO this is temprorary fix
         self.feature_type = feature_type
 
         # Datasets
@@ -165,7 +166,8 @@ class ARDataset(Dataset):
         )
 
         # Check and retrieve vocabulary
-        vocab_folder = os.path.join("Quartets", "vocabs")
+        #vocab_folder = os.path.join("Quartets", "vocabs")
+        vocab_folder = '/scratch/22454862/Quartets/vocab'
         os.makedirs(vocab_folder, exist_ok=True)
         vocab_name = self.ds_name + f"_{vocab_name}"
         vocab_name += "_withvc" if self.use_voice_change_token else ""
@@ -178,6 +180,8 @@ class ARDataset(Dataset):
         # Check and retrive max lengths
         # Set max_seq_len, max_audio_len and frame_multiplier_factor
         max_lens_folder = os.path.join("Quartets", "max_lens")
+        
+        max_lens_folder = '/scratch/22454862/Quartets/max_lens'
         os.makedirs(max_lens_folder, exist_ok=True)
         max_lens_name = vocab_name
         self.max_lens_path = os.path.join(max_lens_folder, max_lens_name)
