@@ -123,7 +123,8 @@ SPLITS = ["train", "val", "test"]
 
 # split="train[:10%]+test[:10%:]+"
 SUBSET_AMOUNT = "[:1%]"
-FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
+# FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
+FULL_SUBSETS = "".join([x + "+" for x in SPLITS])[:-1]
 
 
 class ARDataset(Dataset):
