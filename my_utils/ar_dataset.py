@@ -210,8 +210,6 @@ class ARDataset(Dataset):
         # for split in SPLITS:
         # for text in full_ds[split]["transcript"]:
         for i, text in enumerate(full_ds["transcript"]):
-            if i % 50 == 0:
-                print(f"Making vocabulary, item: {i}")
             transcript = self.krn_parser.convert(text=text)
             vocab.extend(transcript)
         vocab = [SOS_TOKEN, EOS_TOKEN] + vocab
@@ -274,8 +272,6 @@ class ARDataset(Dataset):
         # for split in SPLITS:
         #     for sample in full_ds[split]:
         for i, sample in enumerate(full_ds):
-            if i % 50 == 0:
-                print(f"Making max lens, item: {i}")
             # Max transcript length
             transcript = self.krn_parser.convert(text=sample["transcript"])
             max_seq_len = max(max_seq_len, len(transcript))
