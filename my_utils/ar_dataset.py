@@ -160,7 +160,8 @@ class ARDataset(Dataset):
         # Get audios and transcripts files
         self.ds = load_dataset(
             f"PRAIG/{self.ds_name}-quartets",
-            split=f"{self.partition_type}{SUBSET_AMOUNT}",
+            #split=f"{self.partition_type}{SUBSET_AMOUNT}",
+            split=f"{self.partition_type}",
         )
 
         # Check and retrieve vocabulary
