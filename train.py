@@ -108,7 +108,7 @@ def train(
     trainer = Trainer(
         logger=WandbLogger(
             project="FYP",
-            group=f"{model_type}"
+            group=f"{model_type}-{input_feature}"
             if not use_voice_change_token
             else f"{model_type}-VCT",
             name=f"Train-{ds_name}_Test-{ds_name}",
