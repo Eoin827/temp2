@@ -125,7 +125,7 @@ SPLITS = ["train", "val", "test"]
 # split="train[:10%]+test[:10%:]+"
 SUBSET_AMOUNT = "[:1%]"
 SUBSET_AMOUNT = "[:1%]"  # what are u doing bro
-# SUBSET_AMOUNT = os.environ.get("SUBSET_AMOUNT", "")
+SUBSET_AMOUNT = os.environ.get("SUBSET_AMOUNT", "")
 FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
 # FULL_SUBSETS = "".join([x + "+" for x in SPLITS])[:-1]
 
@@ -213,8 +213,7 @@ class ARDataset(Dataset):
     def make_vocabulary(self):
         print("Making ar vocabulary")
         full_ds = load_dataset(
-            f"PRAIG/{self.ds_name}-quartets",
-            split=FULL_SUBSETS,  # , streaming=True
+            f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS, streaming=True
         )
 
         vocab = []
