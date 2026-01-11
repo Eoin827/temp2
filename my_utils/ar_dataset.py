@@ -211,7 +211,7 @@ class ARDataset(Dataset):
         y = [self.w2i[w] for w in y]
         return torch.tensor(y, dtype=torch.int64)
 
-    def transcript_generator(self):
+    def full_dataset_generator(self):
         if SUBSET_AMOUNT:
             full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
             yield from full_ds
@@ -229,7 +229,7 @@ class ARDataset(Dataset):
         print("Making ar vocabulary")
 
         vocab = []
-        for data in self.transcript_generator():
+        for data in self.full_dataset_generator():
             text = data["transcript"]
             transcript = self.krn_parser.convert(text=text)
             vocab.extend(transcript)
@@ -289,12 +289,13 @@ class ARDataset(Dataset):
         max_seq_len = 0
         max_audio_len = 0
 
-        full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
+        # full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
         # for split in SPLITS:
         #     for sample in full_ds[split]:
         max_audio_raw = None
         max_duration = 0.0
-        for i, sample in enumerate(full_ds):
+        # for i, sample in enumerate(full_ds):
+        for sample in self.full_dataset_generator():
             # Max transcript length
             transcript = self.krn_parser.convert(text=sample["transcript"])
             max_seq_len = max(max_seq_len, len(transcript))
