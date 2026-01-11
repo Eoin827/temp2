@@ -213,7 +213,8 @@ class ARDataset(Dataset):
     def make_vocabulary(self):
         print("Making ar vocabulary")
         full_ds = load_dataset(
-            f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS, streaming=True
+            f"PRAIG/{self.ds_name}-quartets",
+            split=FULL_SUBSETS,  # , streaming=True
         )
 
         vocab = []
