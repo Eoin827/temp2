@@ -294,23 +294,38 @@ class ARDataset(Dataset):
         #     for sample in full_ds[split]:
         max_audio_raw = None
         max_duration = 0.0
+        max_audio_sr = None
         # for i, sample in enumerate(full_ds):
         for sample in self.full_dataset_generator():
             # Max transcript length
             transcript = self.krn_parser.convert(text=sample["transcript"])
             max_seq_len = max(max_seq_len, len(transcript))
 
-            # dur = sample["audio"]["array"].shape[0] /
-            # Max audio length
-            print("raw audio shape", sample["audio"]["array"])
-            audio = preprocess_audio(  # TODO this doenst have to be done we can just find longest thing without preprocessing then preprocess it later
-                raw_audio=sample["audio"]["array"],
-                sr=sample["audio"]["sampling_rate"],
-                dtype=torch.float32,
-                feature=self.feature_type,
-            )
-            max_audio_len = max(max_audio_len, audio.shape[2])
+            sr = sample["audio"]["sampling_rate"]
+            raw_audio = sample["audio"]["array"]
 
+            dur = raw_audio.shape[0] / sr
+            if dur > max_duration:
+                max_duration = dur
+                max_audio_raw = raw_audio
+                max_audio_sr = sr
+            # Max audio length
+            print("raw audio shape", sample["audio"]["array"].shape)
+            # audio = preprocess_audio(  # TODO this doenst have to be done we can just find longest thing without preprocessing then preprocess it later
+            #     raw_audio=sample["audio"]["array"],
+            #     sr=sample["audio"]["sampling_rate"],
+            #     dtype=torch.float32,
+            #     feature=self.feature_type,
+            # )
+            # max_audio_len = max(max_audio_len, audio.shape[2])
+
+        audio = preprocess_audio(
+            raw_audio=max_audio_raw,
+            sr=max_audio_sr,
+            dtype=torch.float32,
+            feature=self.feature_type,
+        )
+        max_audio_len = max(max_audio_len, audio.shape[2])
         return {
             "max_seq_len": max_seq_len,
             "max_audio_len": max_audio_len,
