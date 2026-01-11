@@ -34,8 +34,8 @@ class ARDataModule(LightningDataModule):
         self.ds_name = ds_name
         self.use_voice_change_token = use_voice_change_token
         self.batch_size = batch_size
-        #self.num_workers = num_workers
-        self.num_workers =  0 # TODO this is temprorary fix
+        # self.num_workers = num_workers
+        self.num_workers = 0  # TODO this is temprorary fix
         self.feature_type = feature_type
 
         # Datasets
@@ -124,8 +124,10 @@ SPLITS = ["train", "val", "test"]
 
 # split="train[:10%]+test[:10%:]+"
 SUBSET_AMOUNT = "[:1%]"
-# FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
-FULL_SUBSETS = "".join([x + "+" for x in SPLITS])[:-1]
+SUBSET_AMOUNT = "[:1%]"  # what are u doing bro
+SUBSET_AMOUNT = os.environ.get("SUBSET_AMOUNT", "")
+FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
+# FULL_SUBSETS = "".join([x + "+" for x in SPLITS])[:-1]
 
 
 class ARDataset(Dataset):
@@ -161,13 +163,14 @@ class ARDataset(Dataset):
         # Get audios and transcripts files
         self.ds = load_dataset(
             f"PRAIG/{self.ds_name}-quartets",
-            #split=f"{self.partition_type}{SUBSET_AMOUNT}",
+            # split=f"{self.partition_type}{SUBSET_AMOUNT}",
             split=f"{self.partition_type}",
+            streaming=True,
         )
 
         # Check and retrieve vocabulary
-        #vocab_folder = os.path.join("Quartets", "vocabs")
-        vocab_folder = '/scratch/22454862/Quartets/vocab'
+        # vocab_folder = os.path.join("Quartets", "vocabs")
+        vocab_folder = "/scratch/22454862/Quartets/vocab"
         os.makedirs(vocab_folder, exist_ok=True)
         vocab_name = self.ds_name + f"_{vocab_name}"
         vocab_name += "_withvc" if self.use_voice_change_token else ""
@@ -180,8 +183,8 @@ class ARDataset(Dataset):
         # Check and retrive max lengths
         # Set max_seq_len, max_audio_len and frame_multiplier_factor
         max_lens_folder = os.path.join("Quartets", "max_lens")
-        
-        max_lens_folder = '/scratch/22454862/Quartets/max_lens'
+
+        max_lens_folder = "/scratch/22454862/Quartets/max_lens"
         os.makedirs(max_lens_folder, exist_ok=True)
         max_lens_name = vocab_name
         self.max_lens_path = os.path.join(max_lens_folder, max_lens_name)
@@ -209,7 +212,9 @@ class ARDataset(Dataset):
 
     def make_vocabulary(self):
         print("Making ar vocabulary")
-        full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
+        full_ds = load_dataset(
+            f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS, streaming=True
+        )
 
         vocab = []
         # for split in SPLITS:
@@ -273,15 +278,21 @@ class ARDataset(Dataset):
         max_seq_len = 0
         max_audio_len = 0
 
-        full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
+        full_ds = load_dataset(
+            "PRAIG/quartets-quartets", split=FULL_SUBSETS, streaming=True
+        )
         # for split in SPLITS:
         #     for sample in full_ds[split]:
+        max_audio_raw = None
+        max_duration = 0.0
         for i, sample in enumerate(full_ds):
             # Max transcript length
             transcript = self.krn_parser.convert(text=sample["transcript"])
             max_seq_len = max(max_seq_len, len(transcript))
 
+            # dur = sample["audio"]["array"].shape[0] /
             # Max audio length
+            print(sample["audio"]["array"].shape[0])
             audio = preprocess_audio(  # TODO this doenst have to be done we can just find longest thing without preprocessing then preprocess it later
                 raw_audio=sample["audio"]["array"],
                 sr=sample["audio"]["sampling_rate"],
