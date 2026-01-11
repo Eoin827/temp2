@@ -125,7 +125,7 @@ SPLITS = ["train", "val", "test"]
 # split="train[:10%]+test[:10%:]+"
 SUBSET_AMOUNT = "[:1%]"
 SUBSET_AMOUNT = "[:1%]"  # what are u doing bro
-SUBSET_AMOUNT = os.environ.get("SUBSET_AMOUNT", "")
+# SUBSET_AMOUNT = os.environ.get("SUBSET_AMOUNT", "")
 FULL_SUBSETS = "".join([x + f"{SUBSET_AMOUNT}+" for x in SPLITS])[:-1]
 # FULL_SUBSETS = "".join([x + "+" for x in SPLITS])[:-1]
 
