@@ -161,11 +161,12 @@ class ARDataset(Dataset):
         )
 
         # Get audios and transcripts files
+        # if SUBSET_AMOUNT:
         self.ds = load_dataset(
             f"PRAIG/{self.ds_name}-quartets",
-            # split=f"{self.partition_type}{SUBSET_AMOUNT}",
-            split=f"{self.partition_type}",
-            streaming=True,
+            split=f"{self.partition_type}{SUBSET_AMOUNT}",
+            # split=f"{self.partition_type}",
+            # streaming=True,
         )
 
         # Check and retrieve vocabulary
@@ -210,16 +211,26 @@ class ARDataset(Dataset):
         y = [self.w2i[w] for w in y]
         return torch.tensor(y, dtype=torch.int64)
 
+    def transcript_generator(self):
+        if SUBSET_AMOUNT:
+            full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS)
+            yield from full_ds
+            # for sample in full_ds:
+            #     yield sample
+        else:
+            full_ds = load_dataset(f"PRAIG/{self.ds_name}-quartets", streaming=True)
+
+            for split in SPLITS:
+                yield from full_ds[split]
+                # for sample in full_ds[split]:
+                #     yield sample
+
     def make_vocabulary(self):
         print("Making ar vocabulary")
-        full_ds = load_dataset(
-            f"PRAIG/{self.ds_name}-quartets", split=FULL_SUBSETS, streaming=True
-        )
 
         vocab = []
-        # for split in SPLITS:
-        # for text in full_ds[split]["transcript"]:
-        for i, text in enumerate(full_ds["transcript"]):
+        for data in self.transcript_generator():
+            text = data["transcript"]
             transcript = self.krn_parser.convert(text=text)
             vocab.extend(transcript)
         vocab = [SOS_TOKEN, EOS_TOKEN] + vocab
@@ -278,9 +289,7 @@ class ARDataset(Dataset):
         max_seq_len = 0
         max_audio_len = 0
 
-        full_ds = load_dataset(
-            "PRAIG/quartets-quartets", split=FULL_SUBSETS, streaming=True
-        )
+        full_ds = load_dataset("PRAIG/quartets-quartets", split=FULL_SUBSETS)
         # for split in SPLITS:
         #     for sample in full_ds[split]:
         max_audio_raw = None
@@ -305,3 +314,6 @@ class ARDataset(Dataset):
             "max_seq_len": max_seq_len,
             "max_audio_len": max_audio_len,
         }
+
+    # def iterate_dataset(self):
+    #     if SUBSET_AMOUNT:
