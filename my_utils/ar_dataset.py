@@ -292,7 +292,7 @@ class ARDataset(Dataset):
 
             # dur = sample["audio"]["array"].shape[0] /
             # Max audio length
-            print(sample["audio"]["array"].shape[0])
+            print("raw audio shape", sample["audio"]["array"])
             audio = preprocess_audio(  # TODO this doenst have to be done we can just find longest thing without preprocessing then preprocess it later
                 raw_audio=sample["audio"]["array"],
                 sr=sample["audio"]["sampling_rate"],
